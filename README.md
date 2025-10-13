@@ -201,4 +201,59 @@ screen -S cassandra
 cd /usr/local/apache-cassandra/bin/
 ./nodetool -u cassandra -pw 'localcassandra' status
 ```
+## Cassandra Reaper:
+- The Cassandra Reaper tool is used to schedule automatic repairs for the data in Cassandra.
+- Reapers are scheduled in background.
 
+The directory for the reaper is `/usr/local/apache-cassandra/reaper`.
+
+
+### Install and configure
+
+1. Install package.
+```
+curl -1sLf 'https://dl.cloudsmith.io/public/thelastpickle/reaper/setup.deb.sh' | sudo -E bash
+sudo apt-get update && sudo apt-get install reaper
+```
+
+2. Add line in,
+
+nano /etc/cassandra-reaper/cassandra-reaper.yaml
+
+```
+cryptograph:
+  type: symmetric
+  systemPropertySecret: REAPER_JMX_KEY
+```
+
+3. Set hostname of node and make sure to add in /etc/hosts
+
+Download cassandra-reaper script and start cassandra-reaper
+```
+s3cmd get s3://uffizio-db-backup/Server-setup/cassandra-setup/cassandra-reaper.sh /usr/local/bin/
+chmod a+x /usr/local/bin/cassandra-reaper.sh
+```
+
+Start reaper
+```
+screen -S reaper
+/usr/local/bin/cassandra-reaper.sh
+```
+
+Open port 8080 for security firewall 
+1. Open http://<SERVERIP>:8080/webui/login.html
+   
+e.g. http://3.6.250.194:8080/webui/login.html
+```
+Username: admin
+Password: admin
+     ADD cluster 
+
+JMX username - cassandra
+JMX password - Cassandrauff!z!0
+```
+
+Which is added into `/etc/cassandra/cassandrajmx.password`
+
+
+Need to Add Cluster every time after restarting cassandra reaper.
