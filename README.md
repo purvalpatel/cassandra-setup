@@ -1,5 +1,10 @@
-Installation on server:
------------------------
+## Introduction:
+- Apache Cassandra is a highly scalable, distributed NoSQL database designed to handle large amounts of data across many servers while providing high availability and fault tolerance.
+- It is used for realtime data in most of the cases.
+
+
+## Installation on server:
+
 ### Basic Installation:
 ```bash
 apt-get update && apt-get upgrade
@@ -188,7 +193,7 @@ cassandra     readwrite
 ```
 
 
-## Restart cassandra:
+### Restart cassandra:
 ```
 # Start Cassandra. before that stop service if already running by killing it.
 cd /usr/local/apache-cassandra/bin
@@ -201,7 +206,7 @@ screen -S cassandra
 cd /usr/local/apache-cassandra/bin/
 ./nodetool -u cassandra -pw 'localcassandra' status
 ```
-## Cassandra Reaper:
+## Cassandra Reaper(Optional):
 - The Cassandra Reaper tool is used to schedule automatic repairs for the data in Cassandra.
 - Reapers are scheduled in background.
 
@@ -255,5 +260,7 @@ JMX password - Cassandrauff!z!0
 
 Which is added into `/etc/cassandra/cassandrajmx.password`
 
-
 Need to Add Cluster every time after restarting cassandra reaper.
+
+## Cassandra setup with kubernetes. Multinode cluster.
+
