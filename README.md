@@ -294,6 +294,8 @@ Username – cassandra
 
 Password - cassandra 
 
+Notes:
+
 - Here we are using statefulset with Persistent volume that each have nodeaffinity to pin them with specific nodes.
 - After PVC binds to PV The scheduler forces the pod to run on the same node that satisfies the PV's node affinity.
 
