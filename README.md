@@ -293,3 +293,26 @@ User credentials:
 Username – cassandra 
 
 Password - cassandra 
+
+- Here we are using statefulset with Persistent volume that each have nodeaffinity to pin them with specific nodes.
+- After PVC binds to PV The scheduler forces the pod to run on the same node that satisfies the PV's node affinity.
+
+So, 
+```
+data-cassandra-0 → cassandra-pv-cql-0 → node k8s-master
+data-cassandra-1 → cassandra-pv-cql-1 → node worker1
+data-cassandra-2 → cassandra-pv-cql-2 → node worker1
+```
+Then:
+
+cassandra-0 will always be scheduled on k8s-master
+
+cassandra-1 and cassandra-2 will be scheduled on worker1
+
+### Flow of PV and PVC works:
+PV->PVC->Pod
+PV Exists first
+
+PVC is created 
+
+Pod uses PVC storage.
