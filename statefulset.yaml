@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cassandra
+  namespace: cql
+spec:
+  serviceName: cassandra
+  replicas: 3
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      app: cassandra
+  template:
+    metadata:
+      labels:
+        app: cassandra
+    spec:
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      initContainers:
+      - name: cassandra-init
+        image: cassandra:5.0
+        command: ['/bin/bash']
+        args: ['/scripts/init.sh']
+        volumeMounts:
+        - name: init-script
+          mountPath: /scripts
+        - name: shared-config
+          mountPath: /shared-config
+      containers:
+      - name: cassandra
+        image: cassandra:5.0
+        ports:
+        - containerPort: 9042
+          name: cql
+        - containerPort: 7000
+          name: intra-node
+        - containerPort: 7001
+          name: tls-intra-node
+        - containerPort: 7199
+          name: jmx
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "nodetool status | grep UN"
+          initialDelaySeconds: 90
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 3
+        livenessProbe:
+          tcpSocket:
+            port: 9042
+          initialDelaySeconds: 180
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        startupProbe:
+          tcpSocket:
+            port: 9042
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 40
+        env:
+        - name: CASSANDRA_CLUSTER_NAME
+          value: "CassandraCluster"
+        - name: CASSANDRA_RESET_BOOTSTRAP_PROGRESS
+          value: "true"
+        - name: CASSANDRA_DC
+          value: "datacenter1"  # Changed from DC1 to datacenter1
+        - name: CASSANDRA_RACK
+          value: "rack1"        # Changed from Rack1 to rack1
+        - name: CASSANDRA_ENDPOINT_SNITCH
+          value: "GossipingPropertyFileSnitch"
+        - name: MAX_HEAP_SIZE
+          value: "12G"
+        - name: HEAP_NEWSIZE
+          value: "8G"
+        - name: CASSANDRA_LISTEN_ADDRESS
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: CASSANDRA_BROADCAST_ADDRESS
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: CASSANDRA_RPC_ADDRESS
+          value: "0.0.0.0"
+        - name: CASSANDRA_BROADCAST_RPC_ADDRESS
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: CASSANDRA_SEEDS
+          value: "cassandra-0.cassandra.cql.svc.cluster.local,cassandra-1.cassandra.cql.svc.cluster.local"
+#          value: "cassandra-0.cassandra.cql.svc.cluster.local"
+        - name: CASSANDRA_NUM_TOKENS
+          value: "16"
+        # Add this flag to ignore DC mismatch during transition
+        - name: JVM_OPTS
+          value: "-Dcassandra.ignore_dc=true"
+        resources:
+          requests:
+            memory: "15Gi"
+            cpu: "5"
+          limits:
+            memory: "20Gi"
+            cpu: "5"
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/cassandra
+        - name: shared-config
+          mountPath: /etc/cassandra/cassandra.yaml
+          subPath: cassandra.yaml
+      volumes:
+      - name: init-script
+        configMap:
+          name: cassandra-init-script
+          defaultMode: 0755
+      - name: shared-config
+#        configMap:
+#          name: cassandra-config-p1
+        emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: manual
