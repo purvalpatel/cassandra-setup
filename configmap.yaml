@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cassandra-config
+  namespace: cql
+data:
+  cassandra.yaml: |
+    cluster_name: 'Test Cluster'
+    num_tokens: 16
+    listen_address:
+    rpc_address: 0.0.0.0
+    broadcast_address:
+    broadcast_rpc_address:
+    endpoint_snitch: SimpleSnitch
+    authenticator: AllowAllAuthenticator
+    authorizer: AllowAllAuthorizer
+    partitioner: org.apache.cassandra.dht.Murmur3Partitioner
+    seed_provider:
+      - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+        parameters:
+          - seeds: "127.0.0.1"
+    
+    # Required CommitLog configuration
+    commitlog_sync: periodic
+    commitlog_sync_period: 10000ms
+    
+    # Updated parameter names for Cassandra 5.0
+    concurrent_writes: 64
+    concurrent_reads: 16
+    memtable_flush_writers: 4
+    write_request_timeout: 200000ms
+    request_timeout: 100000ms
+    read_request_timeout: 400000ms
+    range_request_timeout: 100000ms
+    commitlog_segment_size: 32MiB
+    batch_size_warn_threshold: 25KiB
+    memtable_allocation_type: heap_buffers
+    memtable_heap_space: 2048MiB
+    memtable_offheap_space: 4048MiB
+    compaction_throughput: 64MiB/s
+    concurrent_compactors: 16
+    internode_compression: all
+    hinted_handoff_enabled: true
+    hinted_handoff_throttle: 1024KiB
+    trickle_fsync: true
+    
+    # Storage directories
+    data_file_directories:
+      - /var/lib/cassandra/data
+    commitlog_directory: /var/lib/cassandra/commitlog
+    saved_caches_directory: /var/lib/cassandra/saved_caches
+    hints_directory: /var/lib/cassandra/hints
