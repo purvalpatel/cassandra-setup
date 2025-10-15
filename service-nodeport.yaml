@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cassandra-nodeport
+  namespace: cql
+  labels:
+    app: cassandra
+spec:
+  type: NodePort
+  ports:
+    - port: 9042              # Internal port used by Cassandra
+      targetPort: 9042        # Port on the Cassandra pod
+      nodePort: 31443         # External port (optional, Kubernetes will assign one if not specified)
+      protocol: TCP
+      name: cql
+  selector:
+    app: cassandra
