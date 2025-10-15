@@ -264,3 +264,32 @@ Need to Add Cluster every time after restarting cassandra reaper.
 
 ## Cassandra setup with kubernetes. Multinode cluster.
 
+1. Create directory on all nodes for storing data.
+```
+mkdir –p /opt/cassandra-data/cassandra-data-0/ 
+
+mkdir –p /opt/cassandra-data/cassandra-data-1/ 
+
+mkdir –p /opt/cassandra-data/cassandra-data-2/
+```
+
+2. Create resources.
+```
+kubectl apply -f configmap-init.yaml 
+
+kubectl apply -f configmap.yaml 
+
+kubectl apply -f pv.yaml 
+
+kubectl apply -f statefulset.yaml 
+
+kubectl apply -f service-nodeport.yaml 
+
+kubectl apply -f service-headless.yaml
+```
+
+User credentials:
+
+Username – cassandra 
+
+Password - cassandra 
