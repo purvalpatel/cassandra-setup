@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cassandra-init-script
+  namespace: cql
+data:
+  init.sh: |
+    #!/bin/bash
+    echo "Starting Cassandra configuration modification..."
+    
+    # Copy default cassandra.yaml to shared config volume
+    cp /etc/cassandra/cassandra.yaml /shared-config/cassandra.yaml
+    
+    # Modify the configuration file
+    sed -i 's/authenticator: AllowAllAuthenticator/authenticator: PasswordAuthenticator/g' /shared-config/cassandra.yaml
+    sed -i 's/authorizer: AllowAllAuthorizer/authorizer: CassandraAuthorizer/g' /shared-config/cassandra.yaml
+    
+    # Set cluster name
+    sed -i "s/cluster_name: 'Test Cluster'/cluster_name: 'CassandraCluster1'/g" /shared-config/cassandra.yaml
+    
+    # Configure seeds for proper cluster formation (CRITICAL for fixing your issue)
+    sed -i 's/- seeds: "127.0.0.1"/- seeds: "cassandra-0.cassandra.cql.svc.cluster.local"/g' /shared-config/cassandra.yaml
+    
+    # Set endpoint_snitch for multi-datacenter awareness
+    sed -i 's/endpoint_snitch: SimpleSnitch/endpoint_snitch: GossipingPropertyFileSnitch/g' /shared-config/cassandra.yaml
+    
+    # Optimize for faster startup and better performance
+    sed -i 's/# file_cache_size_in_mb: 512/file_cache_size_in_mb: 256/g' /shared-config/cassandra.yaml
+    sed -i 's/# commitlog_sync_period_in_ms: 10000/commitlog_sync_period_in_ms: 10000/g' /shared-config/cassandra.yaml
+    sed -i 's/concurrent_writes: 32/concurrent_writes: 128/g' /shared-config/cassandra.yaml
+    sed -i 's/concurrent_reads: 32/concurrent_reads: 64/g' /shared-config/cassandra.yaml
+    sed -i 's/# memtable_flush_writers: 2/memtable_flush_writers: 8/g' /shared-config/cassandra.yaml
+    sed -i 's/write_request_timeout: 2000ms/write_request_timeout: 200000ms/g' /shared-config/cassandra.yaml
+    sed -i 's/read_request_timeout: 5000ms/read_request_timeout: 400000ms/g' /shared-config/cassandra.yaml
+    sed -i 's/commitlog_segment_size: 32MiB/commitlog_segment_size: 64MiB/g' /shared-config/cassandra.yaml
+    sed -i 's/batch_size_warn_threshold: 5KiB/batch_size_warn_threshold: 50KiB/g' /shared-config/cassandra.yaml
+    sed -i 's/batch_size_fail_threshold: 5KiB/batch_size_fail_threshold: 200KiB/g' /shared-config/cassandra.yaml
+    sed -i 's/# memtable_allocation_type: heap_buffers/memtable_allocation_type: offheap_buffers/g' /shared-config/cassandra.yaml
+    sed -i 's/# memtable_offheap_space: 2048MiB/memtable_offheap_space: 8192MiB/g' /shared-config/cassandra.yaml
+    #sed -i 's/compaction_throughput: 64MiB\/s/compaction_throughput: 128MiB\/s/g' /shared-config/cassandra.yaml
+    sed -i 's#compaction_throughput: 64MiB/s#compaction_throughput: 128MiB/s#g' /shared-config/cassandra.yaml
+    sed -i 's/hinted_handoff_throttle: 1024KiB/hinted_handoff_throttle: 2048KiB/g' /shared-config/cassandra.yaml
+    sed -i 's/# phi_convict_threshold: 8/phi_convict_threshold: 12/g' /shared-config/cassandra.yaml
+
+    sed -i 's/broadcast_rpc_address: 172.16.235.200/broadcast_rpc_address: ${POD_IP}/g' /shared-config/cassandra.yaml
+
+    
+    
+    # Enable auto_bootstrap for proper node joining (except for seed nodes)
+    if [[ "$HOSTNAME" != "cassandra-0" ]]; then
+        sed -i 's/# auto_bootstrap: true/auto_bootstrap: true/g' /shared-config/cassandra.yaml
+    fi
+    
+    echo "Configuration updated successfully:"
+    grep -E "(authenticator|authorizer|cluster_name|seeds|endpoint_snitch):" /shared-config/cassandra.yaml
+
+    # Update batch size thresholds - fix the parameter name for Cassandra 5.0
+    sed -i 's/batch_size_warn_threshold_in_kb: 15/batch_size_warn_threshold: 25KiB/g' /shared-config/cassandra.yaml
+    sed -i 's/range_request_timeout: 10000ms/range_request_timeout: 100000ms/g' /shared-config/cassandra.yaml
+
+    echo "Configuration updated successfully:"
+    echo "=== Key Configuration Values ==="
+    grep -E "(authenticator|authorizer|cluster_name|endpoint_snitch):" /shared-config/cassandra.yaml || true
+    grep -A 3 "seed_provider:" /shared-config/cassandra.yaml || true
+
+    echo "=== Checking YAML syntax ==="
+    # Basic YAML validation - check for common issues and fix them properly
+    _CHK=$(grep -q ":[^[:space:]]" /shared-config/cassandra.yaml | grep -v grep)
+    if [[ -n "$_CHK" ]]; then
+      echo "WARNING: Found colon without space - fixing..."
+      # Fix the sed command - use proper regex syntax
+      sed -i 's/:\([^[:space:]]\)/: \1/g' /shared-config/cassandra.yaml
+    fi
+    # Verify the final configuration
+    echo "=== Final Configuration Check ==="
+    _C=$(grep -q "^[[:space:]]*cluster_name:" /shared-config/cassandra.yaml | grep -v grep)
+    if [[ -n "$_C" ]]; then
+      echo "✓ Configuration file appears valid"
+    else
+      echo "✗ Configuration file may have issues"
+    fi
+
+    echo "Init container completed successfully."
